@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BilimAi admin</title>
+<style>
+:root{--bg:#0b1530;--card:#13214a;--line:#24366e;--tx:#e9f0ff;--mut:#8fa3d6;--ac:#2f7df6;--ok:#12b886;--bad:#f0526b}
+@media (prefers-color-scheme: light){:root{--bg:#eef3ff;--card:#fff;--line:#d3ddf5;--tx:#0e1a3a;--mut:#5a6b99}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+header h1{font-size:18px;margin:0;flex:1}
+main{padding:16px;max-width:1100px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.card b{display:block;font-size:24px}.card span{color:var(--mut);font-size:12px}
+input,button,select{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--tx)}
+button{cursor:pointer;background:var(--ac);border-color:var(--ac);color:#fff}
+button.s{background:var(--card);color:var(--tx);border-color:var(--line);padding:5px 8px;font-size:12px}
+button.d{background:var(--bad);border-color:var(--bad);padding:5px 8px;font-size:12px}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:760px}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}
+th{color:var(--mut);font-weight:600}.pro{color:var(--ok);font-weight:700}.ban{color:var(--bad)}
+.row{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}.act{display:flex;gap:4px;flex-wrap:wrap}
+#login{max-width:360px;margin:80px auto;background:var(--card);padding:20px;border-radius:14px;border:1px solid var(--line)}
+#login input{width:100%;margin:10px 0}.bars{display:flex;gap:4px;align-items:flex-end;height:60px;margin-top:8px}
+.bars i{flex:1;background:var(--ac);border-radius:3px 3px 0 0;min-height:2px}
+</style></head><body>
+<div id="login"><h2>BilimAi admin</h2><input id="key" type="password" placeholder="ADMIN_KEY" autocomplete="off">
+<button id="go" style="width:100%">Sign in</button><p id="lerr" class="ban"></p></div>
+<div id="app" hidden>
+<header><h1>BilimAi admin</h1><button class="s" id="out">Sign out</button></header>
+<main>
+<div class="cards" id="cards"></div>
+<div class="card"><span>Requests, last 14 days</span><div class="bars" id="bars"></div></div>
+<div class="row"><input id="q" placeholder="Search email..." style="flex:1;min-width:160px"><button id="find">Search</button><button class="s" id="refresh">Refresh</button></div>
+<div class="wrap"><table><thead><tr><th>Email</th><th>Plan</th><th>Until</th><th>Today / limit</th><th>Tokens</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+</main></div>
+<script>
+const $=id=>document.getElementById(id);let KEY=sessionStorage.getItem('ak')||'';
+async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{'x-admin-key':KEY,'content-type':'application/json'}});
+ const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error((j.error&&j.error.message)||r.status);return j}
+function el(t,txt,cls){const e=document.createElement(t);if(txt!==undefined)e.textContent=txt;if(cls)e.className=cls;return e}
+const fd=t=>t?new Date(t*1000).toLocaleDateString():'-';
+async function stats(){const s=await api('/admin/api/stats');const c=$('cards');c.replaceChildren();
+ [['Users',s.users],['Pro',s.pro],['Banned',s.banned],['Requests today',s.req_today],['Tokens today',s.tin_today+s.tout_today]].forEach(([l,v])=>{
+  const d=el('div',undefined,'card');d.append(el('b',v),el('span',l));c.append(d)});
+ const b=$('bars');b.replaceChildren();const days=s.days.slice().reverse();const mx=Math.max(1,...days.map(x=>x.req));
+ days.forEach(x=>{const i=el('i');i.style.height=Math.round(x.req/mx*100)+'%';i.title=x.day+': '+x.req;b.append(i)})}
+async function act(id,action,extra={}){try{await api('/admin/api/user',{method:'POST',body:JSON.stringify({id,action,...extra})});await load();await stats()}catch(e){alert(e.message)}}
+async function load(){const j=await api('/admin/api/users?q='+encodeURIComponent($('q').value));const tb=$('rows');tb.replaceChildren();
+ j.users.forEach(u=>{const tr=el('tr');tr.append(el('td',u.email+(u.google?' (G)':'')),
+  el('td',u.banned?'banned':u.plan,u.banned?'ban':(u.plan==='pro'?'pro':'')),el('td',u.plan==='pro'?fd(u.pro_until):'-'),
+  el('td',u.today+' / '+u.limit),el('td',u.tokens.toLocaleString()),el('td',fd(u.created)));
+  const a=el('td');const box=el('div',undefined,'act');
+  const mk=(t,fn,c)=>{const b=el('button',t,c||'s');b.onclick=fn;box.append(b)};
+  mk('+30d',()=>act(u.id,'grant',{days:30}));mk('+365d',()=>act(u.id,'grant',{days:365}));mk('Free',()=>act(u.id,'revoke'));
+  mk('Limit',()=>{const v=prompt('Daily limit for '+u.email+' (empty = plan default)',u.limit);if(v!==null)act(u.id,'limit',{limit:v})});
+  mk(u.banned?'Unban':'Ban',()=>act(u.id,u.banned?'unban':'ban'));
+  mk('Delete',()=>{if(confirm('Delete '+u.email+'?'))act(u.id,'delete')},'d');
+  a.append(box);tr.append(a);tb.append(tr)})}
+async function enter(){try{await stats();await load();$('login').hidden=true;$('app').hidden=false}catch(e){$('lerr').textContent=e.message;sessionStorage.removeItem('ak')}}
+$('go').onclick=()=>{KEY=$('key').value;sessionStorage.setItem('ak',KEY);enter()};$('key').onkeydown=e=>{if(e.key==='Enter')$('go').click()};
+$('find').onclick=load;$('q').onkeydown=e=>{if(e.key==='Enter')load()};$('refresh').onclick=()=>{stats();load()};
+$('out').onclick=()=>{sessionStorage.removeItem('ak');location.reload()};if(KEY)enter();
+</script></body></html>
