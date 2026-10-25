@@ -6,21 +6,35 @@ name: Release build
 on: workflow_dispatch
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip autoconf automake libtool pkg-config \
+            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev libltdl-dev build-essential ccache
+      - name: Python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install buildozer "cython==0.29.36" virtualenv setuptools
       - name: Restore keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/bilimai.keystore"
-      - uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/bilimai.keystore"
+      - name: Build signed release
         env:
-          P4A_RELEASE_KEYSTORE: /github/workspace/bilimai.keystore
+          P4A_RELEASE_KEYSTORE: ${{ runner.temp }}/bilimai.keystore
           P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.KEYSTORE_PASSWORD }}
           P4A_RELEASE_KEYALIAS: ${{ secrets.KEY_ALIAS }}
           P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.KEY_PASSWORD }}
-        with:
-          command: buildozer android release
-          buildozer_version: stable
+        run: yes | buildozer -v android release
       - uses: actions/upload-artifact@v4
         with:
           name: BilimAi-release
