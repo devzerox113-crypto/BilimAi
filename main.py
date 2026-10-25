@@ -25,7 +25,9 @@ from kivy.utils import platform
 import hashlib
 
 import study
+import config
 import util
+from account import AccountMixin
 from strings import UI, LANGS, MODES, MODE_PROMPTS, LEVELS, LEVEL_PROMPTS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -234,7 +236,7 @@ class Msg(BoxLayout):
 
 
 # ---------------------------------------------------------------- app
-class BilimAi(App):
+class BilimAi(AccountMixin, App):
     title = "BilimAi"
     icon = P("data", "icon.png")
 
@@ -267,7 +269,8 @@ class BilimAi(App):
         self.build_ui()
         self.sess = None
         self.locked = False
-        Clock.schedule_once(lambda dt: self.show_lock(), 0.3)
+        self.init_account()
+        Clock.schedule_once(lambda dt: self.start_flow(), 0.3)
         return self.root_fl
 
     @property
@@ -567,9 +570,12 @@ class BilimAi(App):
             grid.add_widget(w)
             return w
 
-        label(t("key")); key = ti(self.cfg["key"], password=True)
+        key = server = None
+        if not config.SERVER_URL:
+            label(t("key")); key = ti(self.cfg["key"], password=True)
         label(t("model")); model = ti(self.cfg["model"])
-        label(t("server")); server = ti(self.cfg.get("server", ""))
+        if not config.SERVER_URL:
+            label(t("server")); server = ti(self.cfg.get("server", ""))
         themes = {t("dark"): "dark", t("light"): "light"}
         label(t("theme"))
         sp_theme = self.spinner(t(self.cfg["theme"]), list(themes), size_hint_y=None, height=dp(44))
@@ -595,8 +601,11 @@ class BilimAi(App):
 
         def save(*_):
             old = (self.cfg["theme"], self.cfg["size"])
-            self.cfg.update(key=key.text.strip(), model=model.text.strip() or DEFAULT_MODEL,
-                            server=server.text.strip(), theme=themes[sp_theme.text], size=sizes[sp_size.text],
+            if key is not None:
+                self.cfg["key"] = key.text.strip()
+            if server is not None:
+                self.cfg["server"] = server.text.strip()
+            self.cfg.update(model=model.text.strip() or DEFAULT_MODEL, theme=themes[sp_theme.text], size=sizes[sp_size.text],
                             level=levels[sp_level.text], memory=memory.text.strip(), custom=custom.text.strip())
             p = pin.text.strip()
             if p == "0":
@@ -607,6 +616,7 @@ class BilimAi(App):
             pop.dismiss()
             if old != (self.cfg["theme"], self.cfg["size"]):
                 self.build_ui()
+            self.maybe_login()
         box.add_widget(self.btn(t("save"), save, size_hint_y=None, height=dp(46)))
         pop.open()
 
@@ -763,8 +773,8 @@ class BilimAi(App):
         text = self.inp.text.strip()
         if not text and not self.pending:
             return
-        if not self.cfg["key"]:
-            return self.info(self.tt("nokey"))
+        if not self.require_key():
+            return
         m = {"role": "user", "text": text, "atts": list(self.pending)}
         self.chat["messages"].append(m)
         if not self.chat["title"]:
@@ -847,22 +857,23 @@ class BilimAi(App):
             chat["messages"].append({"role": "assistant", "text": text})
             chat["updated"] = time.time()
             self.save_chat(chat)
+        handled = bool(err) and self.handle_api_error(err)
         if self.chat is chat and widget.parent:
             if text:
                 widget.set_text(text)
                 widget.add_actions()
-            elif err:
+            elif err and not handled:
                 widget.set_text("%s: %s" % (self.tt("error"), err))
             else:
                 self.chat_box.remove_widget(widget)
-            if text and err:
+            if text and err and not handled:
                 self.info("%s: %s" % (self.tt("error"), err))
             Clock.schedule_once(lambda dt: setattr(self.scroll, "scroll_y", 0), 0.1)
 
 
     # ================= v0.3: menu, study, saved, export, lock, server =================
     def endpoint(self):
-        s = self.cfg.get("server", "").strip().rstrip("/")
+        s = self.server()
         url = (s + "/v1/messages") if s else API_URL
         return url, {"content-type": "application/json", "x-api-key": self.cfg["key"], "anthropic-version": "2023-06-01"}
 
@@ -897,8 +908,10 @@ class BilimAi(App):
 
     def open_menu(self, *a):
         box = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(8))
-        items = (("study", self.open_study), ("stats", self.open_stats), ("saved", self.open_saved),
-                 ("export", self.export_chat), ("settings", self.open_settings))
+        items = [("study", self.open_study), ("stats", self.open_stats), ("saved", self.open_saved),
+                 ("export", self.export_chat), ("settings", self.open_settings)]
+        if self.account_mode():
+            items.insert(0, ("account", self.open_account))
         pop = Popup(title=self.tt("menu"), content=box, size_hint=(0.85, None), height=dp(len(items) * 54 + 80),
                     background_color=self.th["popup"])
         for key, cb in items:
@@ -995,8 +1008,8 @@ class BilimAi(App):
             src = "\n\n".join(m["text"] for m in self.chat["messages"][-6:] if m["text"])
         if not src.strip():
             return self.info(self.tt("no_cards"))
-        if not self.cfg["key"]:
-            return self.info(self.tt("nokey"))
+        if not self.require_key():
+            return
         title = src.strip().splitlines()[0][:30]
         self.wait = Popup(title="", content=Label(text=self.tt("loading"), color=self.th["text"]),
                           size_hint=(0.7, None), height=dp(120), auto_dismiss=False, separator_height=0,
@@ -1126,6 +1139,7 @@ class BilimAi(App):
             if self.pin_hash(ti.text.strip()) == self.cfg["pin_hash"]:
                 self.locked = False
                 pop.dismiss()
+                self.maybe_login()
             else:
                 msg.text, ti.text = self.tt("wrong_pin"), ""
                 Clock.schedule_once(lambda dt: setattr(ti, "focus", True), 0.1)

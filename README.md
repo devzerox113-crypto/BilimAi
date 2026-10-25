@@ -1,4 +1,4 @@
-# BilimAi 0.3
+# BilimAi 0.4
 
 Kivy-приложение для Android: чат с Claude (API Anthropic) + учёба. APK собирается на GitHub.
 
@@ -16,7 +16,11 @@ Kivy-приложение для Android: чат с Claude (API Anthropic) + у�
 - Тёмная/светлая тема, размер шрифта, 12 языков ответов, интерфейс на 9 языках
   (новые функции переведены на ru/kk/en/tr, на остальных пока английский).
 
-## Свой сервер (чтобы ключ не лежал на телефоне)
+## Аккаунты, подписка и админка (сервер v2)
+Все подробности: `server/README.md`. В `config.py` впишите `SERVER_URL` - тогда в приложении появляются вход по email и через Google,
+тарифы Free/Pro, кнопка оплаты и меню «Аккаунт». Пустой `SERVER_URL` = режим со своим API-ключом.
+
+## (старое) Свой сервер
 `server/server.py` - прокси без зависимостей: токены для пользователей, лимит запросов в день,
 потоковая передача. Запуск: `ANTHROPIC_API_KEY=... TOKENS=alice,bob python server/server.py`
 (или `server/Dockerfile`). Нужен HTTPS (Render, Railway, Fly.io, VPS + Caddy).

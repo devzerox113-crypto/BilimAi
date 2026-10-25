@@ -6,7 +6,7 @@ source.dir = .
 source.include_exts = py,png,jpg,ttf,kv,atlas
 source.exclude_dirs = .github,bin,__pycache__,server
 source.exclude_patterns = make_assets.py
-version = 0.3
+version = 0.4
 requirements = python3,kivy==2.3.0,certifi,openssl,pyjnius,android
 orientation = portrait
 fullscreen = 0
@@ -18,6 +18,8 @@ presplash.filename = %(source.dir)s/data/presplash.png
 android.presplash_color = #0A1842
 
 android.permissions = INTERNET
+android.manifest.intent_filters = intent_filters.xml
+android.manifest.launch_mode = singleTask
 android.api = 33
 android.minapi = 24
 android.archs = arm64-v8a

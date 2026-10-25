@@ -201,5 +201,24 @@ ES = dict(
     m_chat="Charla", m_tutor="Tutor", m_translator="Traductor", m_coder="Programador", m_quiz="Cuestionario", m_custom="Propio",
     menu="Menú", study="Tarjetas", saved="Guardados", export="Exportar chat", m_homework="Tareas", close="Cerrar",
 )
+
+NEW_EN3 = dict(account="Account", login="Log in", register="Sign up", logout="Log out", email="Email", password="Password",
+    google="Continue with Google", plan="Plan", free="Free", pro="Pro", until="until", used="Requests today",
+    upgrade="Upgrade to Pro", extend="Extend Pro", signed_in="Signed in:", limit_reached="Daily limit reached.",
+    upgrade_q="Upgrade to Pro?", pay_unavailable="Payments are not set up yet.", network="No connection to the server")
+NEW_RU3 = dict(account="Аккаунт", login="Войти", register="Регистрация", logout="Выйти", email="Email", password="Пароль",
+    google="Войти через Google", plan="Тариф", free="Бесплатный", pro="Pro", until="до", used="Запросов сегодня",
+    upgrade="Перейти на Pro", extend="Продлить Pro", signed_in="Вы вошли:", limit_reached="Дневной лимит исчерпан.",
+    upgrade_q="Перейти на Pro?", pay_unavailable="Оплата пока не настроена.", network="Нет связи с сервером")
+NEW_KK3 = dict(account="Аккаунт", login="Кіру", register="Тіркелу", logout="Шығу", email="Email", password="Құпия сөз",
+    google="Google арқылы кіру", plan="Тариф", free="Тегін", pro="Pro", until="дейін", used="Бүгінгі сұраныстар",
+    upgrade="Pro-ға өту", extend="Pro ұзарту", signed_in="Кірдіңіз:", limit_reached="Күнделікті лимит таусылды.",
+    upgrade_q="Pro-ға өтесіз бе?", pay_unavailable="Төлем әлі бапталмаған.", network="Серверге қосылу жоқ")
+NEW_TR3 = dict(account="Hesap", login="Giriş yap", register="Kayıt ol", logout="Çıkış yap", email="E-posta", password="Şifre",
+    google="Google ile devam et", plan="Plan", free="Ücretsiz", pro="Pro", until="bitiş", used="Bugünkü istekler",
+    upgrade="Pro'ya geç", extend="Pro'yu uzat", signed_in="Giriş yapıldı:", limit_reached="Günlük limit doldu.",
+    upgrade_q="Pro'ya geçilsin mi?", pay_unavailable="Ödeme henüz ayarlanmadı.", network="Sunucuya bağlanılamadı")
+EN.update(NEW_EN3); RU.update(NEW_RU3); KK.update(NEW_KK3); TR.update(NEW_TR3)
+
 UI = {"English": EN, "Русский": RU, "Қазақша": KK, "Türkçe": TR, "Українська": UK,
       "O'zbekcha": UZ, "Deutsch": DE, "Français": FR, "Español": ES}
