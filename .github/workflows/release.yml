@@ -1,0 +1,27 @@
+# Signed release build (AAB for Google Play). Run manually: Actions -> Release build -> Run workflow.
+# Needs repository secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+# Create a keystore once:  keytool -genkey -v -keystore bilimai.keystore -alias bilimai -keyalg RSA -keysize 2048 -validity 10000
+# Then:  base64 -w0 bilimai.keystore  -> paste into KEYSTORE_BASE64.  (This workflow is untested - check the first run's log.)
+name: Release build
+on: workflow_dispatch
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/bilimai.keystore"
+      - uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        env:
+          P4A_RELEASE_KEYSTORE: /github/workspace/bilimai.keystore
+          P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.KEYSTORE_PASSWORD }}
+          P4A_RELEASE_KEYALIAS: ${{ secrets.KEY_ALIAS }}
+          P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.KEY_PASSWORD }}
+        with:
+          command: buildozer android release
+          buildozer_version: stable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BilimAi-release
+          path: bin/*
